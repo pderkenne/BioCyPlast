@@ -17,11 +17,11 @@ sample_metadata <- read.csv("metadata.csv", sep = ";")
 sample_data <- sample_data(sample_metadata)
 
 # phyloseq object
-carbom <- merge_phyloseq(biom_data, sample_data)
+phyloseq <- merge_phyloseq(biom_data, sample_data)
 
 # rarefaction 
 set.seed(123)
-carbom_rar <- rarefy_even_depth(carbom, replace = FALSE)
+phyloseq_rar <- rarefy_even_depth(phyloseq, replace = FALSE)
 
 
 
