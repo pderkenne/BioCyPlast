@@ -12,7 +12,7 @@ The analysis aims to: (i) Create a Phyloseq object from the BIOM file (ii) Visua
 
 ## Folder contents
 
-1. *1_data_analysis*
+*data_analysis*
    - *1_phyloseq.R*: creation of the phyloseq object and rarefaction of sampled 16S rRNA sequences.
    - *2_barplots.R* : plotting barplots of main phyla.
    - *3_ordinations_analysis.R*: PCoA of sites and species.
