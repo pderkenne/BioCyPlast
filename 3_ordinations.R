@@ -1,8 +1,16 @@
+# Aim: Plot ordinations to explore microbial communities 
 
+# Performed in R V4.4.1
+
+#librairies
 
 library(phyloseq)
 library(data.table)
 library(dplyr)
+library(tidyr)
+library(vegan)
+library(ggplot2)
+
 
 otu_table2 = as.data.frame(carbom@otu_table)
 tax_table2 = as.data.frame(carbom@tax_table)
