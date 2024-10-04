@@ -2,11 +2,13 @@
 
 # Performed in R V4.4.1
 
+#librairies
+
 library(phyloseq)
 library(fantaxtic)
 library (ggplot2)
 
-# Use phyloseq_rar object created from 1_phyloseq.R
+# Used phyloseq_rar object created from 1_phyloseq.R
 
 ## Normalization 
 # remove unknown and multi-affiliation taxa level: here at genus level
