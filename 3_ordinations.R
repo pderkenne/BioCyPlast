@@ -1,4 +1,7 @@
-# Aim: Plot ordinations to explore microbial communities : exmample with a Principal Coordinate Analysis (PCoA)
+## Aim: Principal Coordinate Analysis (PCoA) plot to analyze the microbial community composition associated with PHBV/Cellulose composites during anaerobic digestion.
+# The plot visualizes how microbial communities shift over time and across different cellulose percentages. 
+# Samples are represented as points, with color and shape indicating cellulose content and sample type. 
+# Arrows illustrate the influence of specific microbial taxa, helping to identify patterns in community structure relative to the degradation process.
 
 # Performed in R V4.4.1
 
@@ -42,83 +45,67 @@ df <- read.csv("df_genus.csv", sep=";")
 metadata <- read.csv("metadata.csv", sep=";")
 
 # add useful metadata
-df$material = metadata$material
+df$cellulose = metadata$cellulose
 df$time = metadata$time
+df$sample = metadata$sample
 
-# normalization 
-df.norm <- subset(df, select = -c(X, material, time)) # material and time are examples of added metadata
+# Subset the data to remove unnecessary columns (metadata)
+df.norm <- subset(df, select = -c(X, material, time, sample)) # Exclude metadata columns
 
-# trasnformation and creation of dissimilarity matrix
+# Transform the data and create a dissimilarity matrix using Hellinger transformation
 spe.h <- decostand(df.norm, method = "hellinger")
 spe.bray <- vegdist(spe.h)
 
-# creation of the PCoA on sites
+# Perform Principal Coordinate Analysis (PCoA) on the dissimilarity matrix
 spe.b.pcoa <- cmdscale(spe.bray, k = (nrow(spe.h) - 1), eig = TRUE)
 
-# sites 
-
+# Extract site coordinates from the PCoA result
 sites <- as.data.frame(spe.b.pcoa$points)
 
-# species 
+# Perform weighted averaging to associate species with PCoA axes
 spe.wa <- wascores(spe.b.pcoa$points[, 1:2], spe.h)
-species = as.data.frame(spe.wa)
+species <- as.data.frame(spe.wa)
 
-## Example of PCoA with 2 axis
-# variance explained by the first two axis 
-
+# Calculate the variance explained by the first two PCoA axes
 explained_var <- spe.b.pcoa$eig / sum(spe.b.pcoa$eig) * 100
-pretty_pe <- format(round(explained_var, digits =1), nsmall=1, trim=TRUE)
+pretty_pe <- format(round(explained_var, digits = 1), nsmall = 1, trim = TRUE)
 labels <- c(glue("PCoA Axis 1 ({pretty_pe[1]}%)"),
-            glue("PCoA Axis 2 ({pretty_pe[2]}%)"))
+             glue("PCoA Axis 2 ({pretty_pe[2]}%)"))
 
-# prepare sites data frame for plot
-
+# Prepare the sites data frame for plotting
 colnames(sites) <- c("pcoa1", "pcoa2")
 sites <- merge(sites, df.norm, by = "row.names", all = TRUE)
 
-# if top 10 most contributive species to the first and second axis plotted on the PCoA  
-
-# Top 10 most contributive taxa on the first axis 1
-
+# Identify the top 10 most contributive species for each axis
 species$abs_pcoa1 <- abs(species$pcoa1)
-sp_axis1 <- species[order(-species$abs_pcoa1), ]
-sp_axis1_top10 <- sp_axis1[1:10, ]
-
-# Top 10 most contributive taxa on the first axis 2
+sp_axis1_top10 <- species[order(-species$abs_pcoa1), ][1:10, ]
 
 species$abs_pcoa2 <- abs(species$pcoa2)
-sp_axis2 <- species[order(-species$abs_pcoa2), ]
-sp_axis2_top10 <- sp_axis2[1:10, ]
+sp_axis2_top10 <- species[order(-species$abs_pcoa2), ][1:10, ]
 
-# Top 20 most contributive taxa 
+# Combine the top 10 species from both axes
+top_20 <- merge(sp_axis1_top10, sp_axis2_top10, all = TRUE)
 
-top_20 = merge(sp_axis1_top10, sp_axis2_top10, all= TRUE)
-
-# plot on ggplot2
-
+# Create the PCoA plot using ggplot2
 pcoa_plot <- ggplot(data = sites, aes(x = pcoa1, y = pcoa2)) +
-  geom_point(aes(color = material,
-                 size = time)
-             na.rm = TRUE, stroke = 5) +
-  geom_text_repel(aes(label = material), segment.color = "black", size = 3, max.overlaps = 50) +
-  geom_segment(data = top_20, aes(xend = pcoa1, yend = pcoa2, x = 0, y = 0),
+  geom_point(aes(shape = sample,
+                 fill = as.factor(cellulose), 
+                 color = as.factor(cellulose), 
+                 size = time)) +
+  geom_text_repel(aes(label = interaction_samples), segment.color = "black", size = 3) +
+  geom_segment(data = top_scores_taxa_plot_axis_1_2, 
+               aes(xend = pcoa1, yend = pcoa2, x = 0, y = 0),
                arrow = arrow(type = "closed", length = unit(0.05, "inches")), color = "gray50") +
-  geom_text_repel(data = top_20, aes(label = taxa), size = 5, nudge_x = 0.01, nudge_y = 0.01, max.overlaps = 50) +
+  geom_text(data = top_scores_taxa_plot_axis_1_2, 
+            aes(x = pcoa1, y = pcoa2, label = taxa), 
+            size = 3, hjust = -0.1, vjust = 0.1) +
   labs(x = labels[1], y = labels[2]) +
-  scale_color_manual(values = c("powder" = "cadetblue3", "film" = "orange"), 
-                     labels = c("PHBV/Cellulose 80/20 in powder", "PHBV/Cellulose 80/20 in film"),
-                     guide = guide_legend(title = "Shape of the material")) +
-  scale_size_manual(values = c("TO" = 1, 
-                               "Tinter_Round n°1" = 5,  
-                               "Tfinal_Round n°1" = 8, 
-                               "Tinter_Round n°2" = 12, 
-                               "Tfinal_Round n°2" = 16), 
-                    labels = c("TO", 
-                               expression(T[inter]*"_Round n°1"),
-                               expression(T[final]*"_Round n°1"), 
-                               expression(T[inter]*"_Round n°2"), 
-                               expression(T[final]*"_Round n°2")), 
-                    guide = guide_legend(title = "Sampling time")) +
+  scale_size_continuous(name = "Time", range = c(2, 15), guide = guide_legend(title = "Time")) +
+  scale_color_manual(values = c("0" = "red", "20" = "green", "40" = "blue", "100" = "purple"), 
+                     guide = guide_legend(title = "% Cellulose")) +
+  scale_shape_manual(values = c("Blank" = 22, "Samples" = 23, "Cellulose" = 24), 
+                     guide = guide_legend(title = "Sample Type")) +
+  labs(fill = "% Cellulose", shape = "Sample Type") +
   theme_minimal() +
   theme(
     axis.text = element_text(size = 12),
@@ -129,9 +116,6 @@ pcoa_plot <- ggplot(data = sites, aes(x = pcoa1, y = pcoa2)) +
   ) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black")
-  stat_ellipse(aes(linetype = factor(group)), level = 0.95, show.legend = TRUE) +  # Include group as linetype
-  scale_linetype_manual(values = c("1" = "solid", "2" = "dashed"), 
-                      labels = c("Group 1", "Group 2"), 
-                        guide = guide_legend(title = "Group", override.aes = list(color = NA)))
 
+# Display the PCoA plot
 print(pcoa_plot)
